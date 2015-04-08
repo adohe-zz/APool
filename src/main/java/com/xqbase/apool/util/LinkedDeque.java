@@ -57,7 +57,7 @@ public class LinkedDeque<T> extends AbstractDeque<T> {
      * @return the {@link Node} of the newly added item.
      */
     public Node<T> addFirstNode(T item) {
-
+        return addBeforeNode(head, item);
     }
 
     /**
@@ -67,7 +67,7 @@ public class LinkedDeque<T> extends AbstractDeque<T> {
      * @return the {@link Node} of the newly added item.
      */
     public Node<T> addLastNode(T item) {
-
+        return addBeforeNode(null, item);
     }
 
     /**
@@ -78,7 +78,36 @@ public class LinkedDeque<T> extends AbstractDeque<T> {
      * @return the {@link Node} of the newly added item.
      */
     public Node<T> addBeforeNode(Node<T> before, T item) {
+        if (item == null) {
+            throw new NullPointerException();
+        }
 
+        if (before != null && before != head && before.next == null && before.prev == null) {
+            throw new IllegalStateException("node does not exist");
+        }
+
+        Node<T> node = new Node<>(item);
+        if (before == null) {
+            // add to tail
+            node.next = null;
+            node.prev = tail;
+            if (tail != null) {
+                tail.next = node;
+            }
+            tail = node;
+            if (head == null) {
+                head = node;
+            }
+        } else {
+            node.next = before;
+            node.prev = before.prev;
+            before.prev = node;
+            if (before == head) {
+                head = node;
+            }
+        }
+        size ++;
+        return node;
     }
 
     @Override
