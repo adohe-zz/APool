@@ -2,6 +2,7 @@ package com.xqbase.apool.util;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * This class provides the ability to remove the arbitrary interior element (
@@ -84,6 +85,10 @@ public class LinkedDeque<T> extends AbstractDeque<T> {
             throw new NullPointerException();
         }
 
+        if (before != null && before.queue != this) {
+            throw new IllegalStateException("before does not belong to this queue");
+        }
+
         if (before != null && before != head && before.next == null && before.prev == null) {
             throw new IllegalStateException("node does not exist");
         }
@@ -147,46 +152,99 @@ public class LinkedDeque<T> extends AbstractDeque<T> {
 
     @Override
     public boolean offerFirst(T t) {
-        return false;
+        addFirstNode(t);
+        return true;
     }
 
     @Override
     public boolean offerLast(T t) {
-        return false;
+        addLastNode(t);
+        return true;
     }
 
     @Override
     public T peekFirst() {
-        return null;
+        if (head == null) {
+            return null;
+        }
+        return head.value;
     }
 
     @Override
     public T peekLast() {
-        return null;
+        if (tail == null) {
+            return null;
+        }
+        return tail.value;
     }
 
     @Override
     public Iterator<T> descendingIterator() {
-        return null;
+        return new LinkedQueueIterator(Direction.DESCENDING);
     }
 
     @Override
     public T pollFirst() {
-        return null;
+        if (head == null) {
+            return null;
+        }
+        return removeNode(head);
     }
 
     @Override
     public T pollLast() {
-        return null;
+        if (tail == null) {
+            return null;
+        }
+        return removeNode(tail);
     }
 
     @Override
     public Iterator<T> iterator() {
-        return null;
+        return new LinkedQueueIterator(Direction.ASCENDING);
     }
 
     @Override
     public int size() {
-        return 0;
+        return size;
+    }
+
+    private enum Direction { ASCENDING, DESCENDING }
+
+    private class LinkedQueueIterator implements Iterator<T> {
+
+        private Direction direction;
+        private Node<T> index;
+        private Node<T> last;
+
+        public LinkedQueueIterator(Direction direction) {
+            this.direction = direction;
+            index = direction == Direction.ASCENDING ? head : tail;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index != null;
+        }
+
+        @Override
+        public T next() {
+            if (index == null) {
+                throw new NoSuchElementException();
+            }
+            last = index;
+            T value = index.value;
+            index = direction == Direction.ASCENDING ? index.next : index.prev;
+            return value;
+        }
+
+        @Override
+        public void remove() {
+            if (last == null) {
+                throw new IllegalStateException();
+            }
+            removeNode(last);
+            last = null;
+        }
     }
 }
