@@ -20,11 +20,13 @@ public class LinkedDeque<T> extends AbstractDeque<T> {
      */
     public static class Node<T> {
 
+        private final LinkedDeque queue;
         private final T value;
         private Node<T> next;
         private Node<T> prev;
 
-        public Node(T value) {
+        public Node(LinkedDeque queue, T value) {
+            this.queue = queue;
             this.value = value;
         }
     }
@@ -86,7 +88,7 @@ public class LinkedDeque<T> extends AbstractDeque<T> {
             throw new IllegalStateException("node does not exist");
         }
 
-        Node<T> node = new Node<>(item);
+        Node<T> node = new Node<>(this, item);
         if (before == null) {
             // add to tail
             node.next = null;
@@ -108,6 +110,39 @@ public class LinkedDeque<T> extends AbstractDeque<T> {
         }
         size ++;
         return node;
+    }
+
+    /**
+     * Remove the specified node from the queue.
+     *
+     * @param node the Node to be removed.
+     * @return the item contained in the Node which was removed.
+     */
+    public T removeNode(Node<T> node) {
+        if (node.queue != this) {
+            throw new IllegalArgumentException("node does not belong to this queue");
+        }
+
+        if (node != head && node.next == null && node.prev == null) {
+            return null;
+        }
+
+        if (head == node) {
+            head = node.next;
+        }
+        if (node.prev != null) {
+            node.prev.next = node.next;
+        }
+
+        if (tail == node) {
+            tail = node.prev;
+        }
+        if (node.next != null) {
+            node.next.prev = node.prev;
+        }
+        node.next = null;
+        node.prev = null;
+        return node.value;
     }
 
     @Override
