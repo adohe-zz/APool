@@ -103,7 +103,12 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
         boolean result = false;
         synchronized (lock) {
             if (state == State.RUNNING) {
+                if (poolSize > maxSize) {
 
+                } else if (waiters.size() > 0 || poolSize < minSize) {
+                    poolSize ++;
+                    result = true;
+                }
             }
         }
         return result;
