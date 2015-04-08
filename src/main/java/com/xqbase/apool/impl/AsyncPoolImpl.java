@@ -100,7 +100,12 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
      * @return true if another object create should be initiated.
      */
     public boolean shouldCreate() {
-        boolean result = true;
+        boolean result = false;
+        synchronized (lock) {
+            if (state == State.RUNNING) {
+
+            }
+        }
         return result;
     }
 
