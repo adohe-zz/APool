@@ -1,5 +1,6 @@
 package com.xqbase.apool.util;
 
+import java.util.Collection;
 import java.util.Iterator;
 
 /**
@@ -13,6 +14,72 @@ import java.util.Iterator;
  * @author Tony He
  */
 public class LinkedDeque<T> extends AbstractDeque<T> {
+
+    /**
+     * Internal Node Class
+     */
+    public static class Node<T> {
+
+        private final T value;
+        private Node<T> next;
+        private Node<T> prev;
+
+        public Node(T value) {
+            this.value = value;
+        }
+    }
+
+    private Node<T> head;
+    private Node<T> tail;
+    private int size;
+
+    /**
+     * Construct a new instance.
+     */
+    public LinkedDeque() {
+        super();
+    }
+
+    /**
+     * Construct a new instance, adding all objects in the specified collection.
+     *
+     * @param collection a {@link Collection} of objects to be added.
+     */
+    public LinkedDeque(Collection<T> collection) {
+        super();
+        addAll(collection);
+    }
+
+    /**
+     * Add a new item at the head of the queue.
+     *
+     * @param item the item to be added.
+     * @return the {@link Node} of the newly added item.
+     */
+    public Node<T> addFirstNode(T item) {
+
+    }
+
+    /**
+     * Add a new item at the tail of the queue.
+     *
+     * @param item the item to be added.
+     * @return the {@link Node} of the newly added item.
+     */
+    public Node<T> addLastNode(T item) {
+
+    }
+
+    /**
+     * Add a new item before the specified node.
+     *
+     * @param before before the {@link Node} before which the item should be added.
+     * @param item the item to be added.
+     * @return the {@link Node} of the newly added item.
+     */
+    public Node<T> addBeforeNode(Node<T> before, T item) {
+
+    }
 
     @Override
     public boolean offerFirst(T t) {
