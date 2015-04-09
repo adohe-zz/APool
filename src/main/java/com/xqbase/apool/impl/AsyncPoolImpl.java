@@ -1,7 +1,10 @@
 package com.xqbase.apool.impl;
 
 import com.xqbase.apool.AsyncPool;
+import com.xqbase.apool.CreateLatch;
+import com.xqbase.apool.LifeCycle;
 import com.xqbase.apool.callback.Callback;
+import com.xqbase.apool.callback.SimpleCallback;
 import com.xqbase.apool.util.Cancellable;
 import com.xqbase.apool.util.LinkedDeque;
 import org.slf4j.Logger;
@@ -27,6 +30,8 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private final int maxWaiters;
     private final long idleTimeout;
     private final ScheduledExecutorService timeoutExecutor;
+    private final LifeCycle<T> lifeCycle;
+    private final CreateLatch createLatch;
 
     private enum State { NOT_YET_STARTED, RUNNING, SHUTTING_DOWN, STOPPED }
 
@@ -43,14 +48,20 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private int totalTimeout = 0;
     private int checkedOut = 0;
 
-    public AsyncPoolImpl(String poolName, int maxSize, int minSize, int maxWaiters,
-                long idleTimeout, ScheduledExecutorService timeoutExecutor) {
+    public AsyncPoolImpl(String poolName, int maxSize,
+                int minSize, int maxWaiters,
+                long idleTimeout,
+                ScheduledExecutorService timeoutExecutor,
+                LifeCycle<T> lifeCycle,
+                CreateLatch createLatch) {
         this.poolName = poolName;
         this.maxSize = maxSize;
         this.minSize = minSize;
         this.maxWaiters = maxWaiters;
         this.idleTimeout = idleTimeout;
         this.timeoutExecutor = timeoutExecutor;
+        this.lifeCycle = lifeCycle;
+        this.createLatch = createLatch;
     }
 
     @Override
@@ -100,14 +111,43 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
      * @return true if another object create should be initiated.
      */
     public boolean shouldCreate() {
-        boolean result = true;
+        boolean result = false;
+        synchronized (lock) {
+            if (state == State.RUNNING) {
+                if (poolSize > maxSize) {
+
+                } else if (waiters.size() > 0 || poolSize < minSize) {
+                    poolSize ++;
+                    result = true;
+                }
+            }
+        }
+
         return result;
     }
 
     /**
      * The real object creation method.
+     * PLEASE do not call this method while hold lock.
      */
     public void create() {
+        createLatch.submit(new CreateLatch.Task() {
+            @Override
+            public void run(SimpleCallback callback) {
+                lifeCycle.create(new Callback<T>() {
+                    @Override
+                    public void onError(Throwable e) {
 
+                    }
+
+                    @Override
+                    public void onSuccess(T result) {
+                        synchronized (lock) {
+                            totalCreated ++;
+                        }
+                    }
+                });
+            }
+        });
     }
 }
