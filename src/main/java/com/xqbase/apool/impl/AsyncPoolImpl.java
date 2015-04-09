@@ -38,7 +38,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private int poolSize = 0;
     private final Object lock = new Object();
 
-    private final Deque<T> idle = new LinkedList<>();
+    private final Deque<TimedObject<T>> idle = new LinkedList<>();
     private final LinkedDeque<Callback<T>> waiters = new LinkedDeque<>();
 
     private State state = State.NOT_YET_STARTED;
@@ -133,7 +133,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     public void create() {
         createLatch.submit(new CreateLatch.Task() {
             @Override
-            public void run(SimpleCallback callback) {
+            public void run(final SimpleCallback callback) {
                 lifeCycle.create(new Callback<T>() {
                     @Override
                     public void onError(Throwable e) {
@@ -145,9 +145,54 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
                         synchronized (lock) {
                             totalCreated ++;
                         }
+                        add(result);
+                        callback.onDone();
                     }
                 });
             }
         });
+    }
+
+    /**
+     * Add the newly created object to the idle pool
+     * or directly transfer to the waiter.
+     *
+     * @param obj the newly created pool object.
+     */
+    private void add(T obj) {
+        Callback<T> waiter;
+
+        synchronized (lock) {
+            // If we have waiters, the idle list must be empty.
+            waiter = waiters.poll();
+            if (waiter == null) {
+                idle.offerLast(new TimedObject<T>(obj));
+            } else {
+                checkedOut ++;
+            }
+        }
+
+        if (waiter != null) {
+            waiter.onSuccess(obj);
+        }
+    }
+
+    private static class TimedObject<T> {
+
+        private final T obj;
+        private final long time;
+
+        private TimedObject(T obj) {
+            this.obj = obj;
+            this.time = System.currentTimeMillis();
+        }
+
+        public T getObj() {
+            return obj;
+        }
+
+        public long getTime() {
+            return time;
+        }
     }
 }
