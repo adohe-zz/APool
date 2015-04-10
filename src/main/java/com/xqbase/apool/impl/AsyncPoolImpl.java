@@ -35,7 +35,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private final Strategy strategy;
 
     private enum State { NOT_YET_STARTED, RUNNING, SHUTTING_DOWN, STOPPED }
-    private enum Strategy { LRU, MRU }
+    public enum Strategy { LRU, MRU }
 
     private int poolSize = 0;
     private final Object lock = new Object();
