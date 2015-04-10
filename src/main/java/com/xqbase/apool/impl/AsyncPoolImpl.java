@@ -32,8 +32,10 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private final ScheduledExecutorService timeoutExecutor;
     private final LifeCycle<T> lifeCycle;
     private final CreateLatch createLatch;
+    private final Strategy strategy;
 
     private enum State { NOT_YET_STARTED, RUNNING, SHUTTING_DOWN, STOPPED }
+    private enum Strategy { LRU, MRU }
 
     private int poolSize = 0;
     private final Object lock = new Object();
@@ -53,7 +55,8 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
                 long idleTimeout,
                 ScheduledExecutorService timeoutExecutor,
                 LifeCycle<T> lifeCycle,
-                CreateLatch createLatch) {
+                CreateLatch createLatch,
+                Strategy strategy) {
         this.poolName = poolName;
         this.maxSize = maxSize;
         this.minSize = minSize;
@@ -62,6 +65,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
         this.timeoutExecutor = timeoutExecutor;
         this.lifeCycle = lifeCycle;
         this.createLatch = createLatch;
+        this.strategy = strategy;
     }
 
     @Override
@@ -97,7 +101,64 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     @Override
     public Cancellable get(Callback<T> callback) {
-        return null;
+        boolean create = false;
+        boolean reject = false;
+        final LinkedDeque.Node<Callback<T>> node;
+        TimeTrackingCallback<T> timeTrackingCallback = new TimeTrackingCallback<>(callback);
+        for (;;) {
+            TimedObject<T> obj = null;
+            final State innerState;
+            synchronized (lock) {
+                innerState = state;
+                if (innerState == State.RUNNING) {
+                    if (strategy == Strategy.LRU) {
+                        obj = idle.pollFirst();
+                    } else {
+                        obj = idle.pollLast();
+                    }
+
+                    if (obj == null) {
+                        if (waiters.size() < maxWaiters) {
+                            // the object is null and the waiters queue is not full
+                            node = waiters.addLastNode(timeTrackingCallback);
+                            create = shouldCreate();
+                        } else {
+                            reject = true;
+                            node = null;
+                        }
+                        break;
+                    }
+                }
+            }
+            if (innerState != State.RUNNING) {
+                timeTrackingCallback.onError(new IllegalStateException(poolName + " is " + innerState));
+                return null;
+            }
+            T rawObj = obj.getObj();
+            if (lifeCycle.validateGet(rawObj)) {
+                synchronized (lock) {
+                    checkedOut ++;
+                }
+                timeTrackingCallback.onSuccess(rawObj);
+                return null;
+            }
+
+            // The raw object is invalidate
+            // TODO:ADD DESTROY
+        }
+        if (reject) {
+
+        }
+
+        if (create) {
+            create();
+        }
+        return new Cancellable() {
+            @Override
+            public boolean cancel() {
+                return waiters.removeNode(node) != null;
+            }
+        };
     }
 
     @Override
@@ -193,6 +254,27 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
         public long getTime() {
             return time;
+        }
+    }
+
+    private class TimeTrackingCallback<T> implements Callback<T> {
+
+        private final long startTime;
+        private final Callback<T> callback;
+
+        private TimeTrackingCallback(Callback<T> callback) {
+            this.startTime = System.currentTimeMillis();
+            this.callback = callback;
+        }
+
+        @Override
+        public void onError(Throwable e) {
+
+        }
+
+        @Override
+        public void onSuccess(T result) {
+
         }
     }
 }

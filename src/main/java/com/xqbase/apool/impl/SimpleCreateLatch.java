@@ -90,7 +90,7 @@ public class SimpleCreateLatch implements CreateLatch {
 
     @Override
     public void setPeriod(long ms) {
-        Long previous = null;
+        Long previous;
         ms = Math.min(maxPeriod, Math.max(minPeriod, ms));
         synchronized (this) {
             if (ms != period) {
