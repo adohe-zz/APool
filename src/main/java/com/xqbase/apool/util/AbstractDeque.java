@@ -96,7 +96,6 @@ public abstract class AbstractDeque<E> extends AbstractQueue<E> implements Deque
     }
 
     // java.util.Queue methods
-
     @Override
     public boolean offer(E e) {
         return offerLast(e);

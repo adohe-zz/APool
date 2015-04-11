@@ -1,7 +1,10 @@
 package com.xqbase.apool.impl;
 
 import com.xqbase.apool.AsyncPool;
+import com.xqbase.apool.CreateLatch;
+import com.xqbase.apool.LifeCycle;
 import com.xqbase.apool.callback.Callback;
+import com.xqbase.apool.callback.SimpleCallback;
 import com.xqbase.apool.util.Cancellable;
 import com.xqbase.apool.util.LinkedDeque;
 import org.slf4j.Logger;
@@ -27,13 +30,17 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private final int maxWaiters;
     private final long idleTimeout;
     private final ScheduledExecutorService timeoutExecutor;
+    private final LifeCycle<T> lifeCycle;
+    private final CreateLatch createLatch;
+    private final Strategy strategy;
 
     private enum State { NOT_YET_STARTED, RUNNING, SHUTTING_DOWN, STOPPED }
+    public enum Strategy { LRU, MRU }
 
     private int poolSize = 0;
     private final Object lock = new Object();
 
-    private final Deque<T> idle = new LinkedList<>();
+    private final Deque<TimedObject<T>> idle = new LinkedList<>();
     private final LinkedDeque<Callback<T>> waiters = new LinkedDeque<>();
 
     private State state = State.NOT_YET_STARTED;
@@ -43,14 +50,22 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private int totalTimeout = 0;
     private int checkedOut = 0;
 
-    public AsyncPoolImpl(String poolName, int maxSize, int minSize, int maxWaiters,
-                long idleTimeout, ScheduledExecutorService timeoutExecutor) {
+    public AsyncPoolImpl(String poolName, int maxSize,
+                int minSize, int maxWaiters,
+                long idleTimeout,
+                ScheduledExecutorService timeoutExecutor,
+                LifeCycle<T> lifeCycle,
+                CreateLatch createLatch,
+                Strategy strategy) {
         this.poolName = poolName;
         this.maxSize = maxSize;
         this.minSize = minSize;
         this.maxWaiters = maxWaiters;
         this.idleTimeout = idleTimeout;
         this.timeoutExecutor = timeoutExecutor;
+        this.lifeCycle = lifeCycle;
+        this.createLatch = createLatch;
+        this.strategy = strategy;
     }
 
     @Override
@@ -86,7 +101,64 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     @Override
     public Cancellable get(Callback<T> callback) {
-        return null;
+        boolean create = false;
+        boolean reject = false;
+        final LinkedDeque.Node<Callback<T>> node;
+        TimeTrackingCallback<T> timeTrackingCallback = new TimeTrackingCallback<>(callback);
+        for (;;) {
+            TimedObject<T> obj = null;
+            final State innerState;
+            synchronized (lock) {
+                innerState = state;
+                if (innerState == State.RUNNING) {
+                    if (strategy == Strategy.LRU) {
+                        obj = idle.pollFirst();
+                    } else {
+                        obj = idle.pollLast();
+                    }
+
+                    if (obj == null) {
+                        if (waiters.size() < maxWaiters) {
+                            // the object is null and the waiters queue is not full
+                            node = waiters.addLastNode(timeTrackingCallback);
+                            create = shouldCreate();
+                        } else {
+                            reject = true;
+                            node = null;
+                        }
+                        break;
+                    }
+                }
+            }
+            if (innerState != State.RUNNING) {
+                timeTrackingCallback.onError(new IllegalStateException(poolName + " is " + innerState));
+                return null;
+            }
+            T rawObj = obj.getObj();
+            if (lifeCycle.validateGet(rawObj)) {
+                synchronized (lock) {
+                    checkedOut ++;
+                }
+                timeTrackingCallback.onSuccess(rawObj);
+                return null;
+            }
+
+            // The raw object is invalidate
+            // TODO:ADD DESTROY
+        }
+        if (reject) {
+
+        }
+
+        if (create) {
+            create();
+        }
+        return new Cancellable() {
+            @Override
+            public boolean cancel() {
+                return waiters.removeNode(node) != null;
+            }
+        };
     }
 
     @Override
@@ -111,13 +183,98 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
                 }
             }
         }
+
         return result;
     }
 
     /**
      * The real object creation method.
+     * PLEASE do not call this method while hold lock.
      */
     public void create() {
+        createLatch.submit(new CreateLatch.Task() {
+            @Override
+            public void run(final SimpleCallback callback) {
+                lifeCycle.create(new Callback<T>() {
+                    @Override
+                    public void onError(Throwable e) {
 
+                    }
+
+                    @Override
+                    public void onSuccess(T result) {
+                        synchronized (lock) {
+                            totalCreated ++;
+                        }
+                        add(result);
+                        callback.onDone();
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Add the newly created object to the idle pool
+     * or directly transfer to the waiter.
+     *
+     * @param obj the newly created pool object.
+     */
+    private void add(T obj) {
+        Callback<T> waiter;
+
+        synchronized (lock) {
+            // If we have waiters, the idle list must be empty.
+            waiter = waiters.poll();
+            if (waiter == null) {
+                idle.offerLast(new TimedObject<T>(obj));
+            } else {
+                checkedOut ++;
+            }
+        }
+
+        if (waiter != null) {
+            waiter.onSuccess(obj);
+        }
+    }
+
+    private static class TimedObject<T> {
+
+        private final T obj;
+        private final long time;
+
+        private TimedObject(T obj) {
+            this.obj = obj;
+            this.time = System.currentTimeMillis();
+        }
+
+        public T getObj() {
+            return obj;
+        }
+
+        public long getTime() {
+            return time;
+        }
+    }
+
+    private class TimeTrackingCallback<T> implements Callback<T> {
+
+        private final long startTime;
+        private final Callback<T> callback;
+
+        private TimeTrackingCallback(Callback<T> callback) {
+            this.startTime = System.currentTimeMillis();
+            this.callback = callback;
+        }
+
+        @Override
+        public void onError(Throwable e) {
+
+        }
+
+        @Override
+        public void onSuccess(T result) {
+
+        }
     }
 }
