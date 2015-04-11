@@ -6,6 +6,7 @@ import com.xqbase.apool.LifeCycle;
 import com.xqbase.apool.callback.Callback;
 import com.xqbase.apool.callback.SimpleCallback;
 import com.xqbase.apool.exceptions.SizeLimitExceededException;
+import com.xqbase.apool.stats.PoolStats;
 import com.xqbase.apool.util.Cancellable;
 import com.xqbase.apool.util.LinkedDeque;
 import org.slf4j.Logger;
@@ -176,6 +177,11 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
         }
         createLatch.setPeriod(0);
         add(obj);
+    }
+
+    @Override
+    public PoolStats getStats() {
+        return null;
     }
 
     /**

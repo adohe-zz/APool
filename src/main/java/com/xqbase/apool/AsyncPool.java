@@ -1,6 +1,7 @@
 package com.xqbase.apool;
 
 import com.xqbase.apool.callback.Callback;
+import com.xqbase.apool.stats.PoolStats;
 import com.xqbase.apool.util.Cancellable;
 
 /**
@@ -52,4 +53,11 @@ public interface AsyncPool<T> {
      * @param obj the object to be returned.
      */
     void put(T obj);
+
+    /**
+     * Get the current stats of the async pool.
+     *
+     * @return stats of pool when called this method.
+     */
+    PoolStats getStats();
 }
