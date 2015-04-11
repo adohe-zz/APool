@@ -5,6 +5,7 @@ import com.xqbase.apool.CreateLatch;
 import com.xqbase.apool.LifeCycle;
 import com.xqbase.apool.callback.Callback;
 import com.xqbase.apool.callback.SimpleCallback;
+import com.xqbase.apool.exceptions.SizeLimitExceededException;
 import com.xqbase.apool.util.Cancellable;
 import com.xqbase.apool.util.LinkedDeque;
 import org.slf4j.Logger;
@@ -147,10 +148,10 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
             }
 
             // The raw object is invalidate
-            // TODO:ADD DESTROY
+            destroy(rawObj, true);
         }
         if (reject) {
-
+            timeTrackingCallback.onError(new SizeLimitExceededException("APool " + poolSize + " exceeded max waiter size: " + maxWaiters));
         }
 
         if (create) {
@@ -235,7 +236,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
             public void onError(Throwable e) {
                 boolean create;
                 synchronized (lock) {
-                    totalDestroyErrors ++;
+                    totalDestroyErrors++;
                     create = objectDestroyed();
                 }
                 if (create) {
@@ -247,7 +248,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
             public void onSuccess(T result) {
                 boolean create;
                 synchronized (lock) {
-                    totalDestroyed ++;
+                    totalDestroyed++;
                     create = objectDestroyed();
                 }
                 if (create) {
