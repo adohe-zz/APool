@@ -47,6 +47,9 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     private int totalCreated = 0;
     private int totalDestroyed = 0;
+    private int totalCreateErrors = 0;
+    private int totalDestroyErrors = 0;
+    private int totalBadDestroyed = 0;
     private int totalTimeout = 0;
     private int checkedOut = 0;
 
@@ -212,6 +215,70 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
                 });
             }
         });
+    }
+
+    /**
+     * Destroy the pool object.
+     *
+     * @param obj the pool object to be destroyed.
+     * @param bad whether the being destroyed pool object is invalidate or not.
+     */
+    private void destroy(T obj, boolean bad) {
+        if (bad) {
+            createLatch.incrementPeriod();
+            synchronized (lock) {
+                totalBadDestroyed ++;
+            }
+        }
+        lifeCycle.destroy(obj, bad, new Callback<T>() {
+            @Override
+            public void onError(Throwable e) {
+                boolean create;
+                synchronized (lock) {
+                    totalDestroyErrors ++;
+                    create = objectDestroyed();
+                }
+                if (create) {
+                    create();
+                }
+            }
+
+            @Override
+            public void onSuccess(T result) {
+                boolean create;
+                synchronized (lock) {
+                    totalDestroyed ++;
+                    create = objectDestroyed();
+                }
+                if (create) {
+                    create();
+                }
+            }
+        });
+    }
+
+    private boolean objectDestroyed() {
+        return objectDestroyed(1);
+    }
+
+    /**
+     * This method is safe to call while holding the lock.
+     *
+     * @param num number of objects have been destroyed.
+     * @return true if another pool object creation should be initiated.
+     */
+    private boolean objectDestroyed(int num) {
+        boolean create;
+        synchronized (lock) {
+            if (poolSize - num > 0) {
+                poolSize -= num;
+            } else {
+                poolSize = 0;
+            }
+            create = shouldCreate();
+        }
+
+        return create;
     }
 
     /**
