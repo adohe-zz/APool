@@ -167,7 +167,15 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     @Override
     public void put(T obj) {
-
+        synchronized (lock) {
+            checkedOut --;
+        }
+        if (!lifeCycle.validatePut(obj)) {
+            destroy(obj, true);
+            return;
+        }
+        createLatch.setPeriod(0);
+        add(obj);
     }
 
     /**
