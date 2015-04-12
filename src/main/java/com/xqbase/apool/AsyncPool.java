@@ -55,6 +55,14 @@ public interface AsyncPool<T> {
     void put(T obj);
 
     /**
+     * Dispose of a checked out object which is not operated correctly. It is an
+     * error to dispose a object which is not checked out from this pool.
+     *
+     * @param obj the object to be disposed.
+     */
+    void dispose(T obj);
+
+    /**
      * Get the current stats of the async pool.
      *
      * @return stats of pool when called this method.
