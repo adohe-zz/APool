@@ -9,6 +9,7 @@ import com.xqbase.apool.exceptions.SizeLimitExceededException;
 import com.xqbase.apool.stats.PoolStats;
 import com.xqbase.apool.util.Cancellable;
 import com.xqbase.apool.util.LinkedDeque;
+import com.xqbase.apool.util.None;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -182,6 +183,11 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     @Override
     public void dispose(T obj) {
 
+    }
+
+    @Override
+    public void shutdown(Callback<None> callback) {
+        
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.xqbase.apool;
 import com.xqbase.apool.callback.Callback;
 import com.xqbase.apool.stats.PoolStats;
 import com.xqbase.apool.util.Cancellable;
+import com.xqbase.apool.util.None;
 
 /**
  * The AsyncPool Interface
@@ -61,6 +62,16 @@ public interface AsyncPool<T> {
      * @param obj the object to be disposed.
      */
     void dispose(T obj);
+
+    /**
+     * Initial an orderly shutdown of the pool. The pool will immediately stop
+     * accept new get requests. Shutdown is complete when 1. No pending request
+     * are waiting for objects. 2. All objects haven been returned to the pool,
+     * via either put or dispose.
+     *
+     * @param callback A callback that is invoked when the shutdown conditions are satisfied.
+     */
+    void shutdown(Callback<None> callback);
 
     /**
      * Get the current stats of the async pool.
