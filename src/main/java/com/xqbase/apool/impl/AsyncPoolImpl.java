@@ -182,7 +182,10 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     @Override
     public void dispose(T obj) {
-
+        synchronized (lock) {
+            checkedOut --;
+        }
+        destroy(obj, true);
     }
 
     @Override
@@ -247,7 +250,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
      * Destroy the pool object.
      *
      * @param obj the pool object to be destroyed.
-     * @param bad whether the being destroyed pool object is invalidate or not.
+     * @param bad whether the being destroyed pool object is bad or not.
      */
     private void destroy(T obj, boolean bad) {
         if (bad) {
