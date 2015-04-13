@@ -47,6 +47,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private final LinkedDeque<Callback<T>> waiters = new LinkedDeque<>();
 
     private State state = State.NOT_YET_STARTED;
+    private Callback<None> shutdownCallback = null;
 
     private int totalCreated = 0;
     private int totalDestroyed = 0;
@@ -190,7 +191,62 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     @Override
     public void shutdown(Callback<None> callback) {
-        
+        final State innerState;
+
+        synchronized (lock) {
+            innerState = state;
+
+            if (innerState == State.RUNNING) {
+                state = State.SHUTTING_DOWN;
+                shutdownCallback = callback;
+            }
+        }
+
+        if (innerState != State.RUNNING) {
+            callback.onError(new IllegalStateException(poolName + " is in State: " + innerState));
+            return;
+        }
+
+        shutdownIfNeeded();
+    }
+
+    private void shutdownIfNeeded() {
+        Callback<None> done = checkShutdownComplete();
+        if (done != null) {
+            finishShutdown(done);
+        }
+    }
+
+    /**
+     * Check whether the shutdown process is complete.
+     *
+     * @return null if incomplete.
+     */
+    private Callback<None> checkShutdownComplete() {
+        Callback<None> done = null;
+        final State innerState;
+        final int waitersSize;
+        final int idleSize;
+        final int innerPoolSize;
+
+        synchronized (lock) {
+            innerState = state;
+            waitersSize = waiters.size();
+            idleSize = idle.size();
+            innerPoolSize = poolSize;
+
+            if (innerState == State.SHUTTING_DOWN && waitersSize == 0 && idleSize == innerPoolSize) {
+                state = State.STOPPED;
+                done = shutdownCallback;
+                shutdownCallback = null;
+            }
+        }
+
+        return done;
+    }
+
+    private void finishShutdown(Callback<None> finish) {
+
     }
 
     @Override
