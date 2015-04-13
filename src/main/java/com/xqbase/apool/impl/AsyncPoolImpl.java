@@ -212,6 +212,11 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
         shutdownIfNeeded();
     }
 
+    @Override
+    public Collection<Callback<T>> cancelWaiters() {
+        return null;
+    }
+
     private void shutdownIfNeeded() {
         Callback<None> done = checkShutdownComplete();
         if (done != null) {

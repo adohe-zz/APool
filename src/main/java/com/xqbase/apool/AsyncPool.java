@@ -5,6 +5,8 @@ import com.xqbase.apool.stats.PoolStats;
 import com.xqbase.apool.util.Cancellable;
 import com.xqbase.apool.util.None;
 
+import java.util.Collection;
+
 /**
  * The AsyncPool Interface
  *
@@ -72,6 +74,13 @@ public interface AsyncPool<T> {
      * @param callback A callback that is invoked when the shutdown conditions are satisfied.
      */
     void shutdown(Callback<None> callback);
+
+    /**
+     * Cancel all the waiters.
+     *
+     * @return waiters collection.
+     */
+    Collection<Callback<T>> cancelWaiters();
 
     /**
      * Get the current stats of the async pool.
