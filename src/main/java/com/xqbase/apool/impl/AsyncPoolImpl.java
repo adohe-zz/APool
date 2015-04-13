@@ -214,7 +214,13 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     @Override
     public Collection<Callback<T>> cancelWaiters() {
-        return null;
+        synchronized (lock) {
+            List<Callback<T>> cancelWaiters = new ArrayList<>(waiters.size());
+            for (Callback<T> waiter; (waiter = waiters.poll()) != null;) {
+                cancelWaiters.add(waiter);
+            }
+            return cancelWaiters;
+        }
     }
 
     private void shutdownIfNeeded() {
