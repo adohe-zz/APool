@@ -13,8 +13,7 @@ import com.xqbase.apool.util.None;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Deque;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -95,7 +94,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
                 objectTimeoutFuture = timeoutExecutor.scheduleAtFixedRate(new Runnable() {
                     @Override
                     public void run() {
-
+                        timeoutObjects();
                     }
                 }, freq, freq, TimeUnit.MILLISECONDS);
             }
@@ -395,6 +394,39 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
         if (waiter != null) {
             waiter.onSuccess(obj);
         }
+    }
+
+    private void timeoutObjects() {
+        Collection<T> timeoutIdle = reap(idle, idleTimeout);
+        if (timeoutIdle.size() > 0) {
+            LOGGER.debug(poolName + " disposing " + timeoutIdle.size() + " objects due to timeout");
+            for (T t : timeoutIdle) {
+                destroy(t, false);
+            }
+        }
+    }
+
+    /**
+     * Get the queue of timeout objects.
+     *
+     * @param queue the original queue.
+     * @param timeout the timeout.
+     * @return queue of timeout objects.
+     */
+    private <U> Collection<U> reap(Queue<TimedObject<U>> queue, long timeout) {
+        List<U> timeoutQueue = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        long target = now - timeout;
+
+        synchronized (lock) {
+            int exceed = poolSize - minSize;
+            for (TimedObject<U> p; (p = queue.peek()) != null && p.getTime() < target && exceed > 0; exceed--) {
+                timeoutQueue.add(queue.poll().getObj());
+                totalTimeout ++;
+            }
+        }
+
+        return timeoutQueue;
     }
 
     private static class TimedObject<T> {
