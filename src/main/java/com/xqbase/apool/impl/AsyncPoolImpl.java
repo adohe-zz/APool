@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Deque;
 import java.util.LinkedList;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -33,6 +35,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private final int maxWaiters;
     private final long idleTimeout;
     private final ScheduledExecutorService timeoutExecutor;
+    private volatile ScheduledFuture<?> objectTimeoutFuture;
     private final LifeCycle<T> lifeCycle;
     private final CreateLatch createLatch;
     private final Strategy strategy;
@@ -89,7 +92,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
             state = State.RUNNING;
             if (idleTimeout > 0) {
                 long freq = Math.min(idleTimeout, 1000);
-                timeoutExecutor.scheduleAtFixedRate(new Runnable() {
+                objectTimeoutFuture = timeoutExecutor.scheduleAtFixedRate(new Runnable() {
                     @Override
                     public void run() {
 
@@ -246,7 +249,11 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     }
 
     private void finishShutdown(Callback<None> finish) {
-
+        Future<?> future = objectTimeoutFuture;
+        if (future != null) {
+            future.cancel(false);
+        }
+        finish.onSuccess(None.none());
     }
 
     @Override
