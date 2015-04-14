@@ -60,8 +60,10 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private int totalTimeout = 0;
     private int checkedOut = 0;
 
-    public AsyncPoolImpl(String poolName, int maxSize,
-                int minSize, int maxWaiters,
+    public AsyncPoolImpl(String poolName,
+                int maxSize,
+                int minSize,
+                int maxWaiters,
                 long idleTimeout,
                 ScheduledExecutorService timeoutExecutor,
                 LifeCycle<T> lifeCycle,
