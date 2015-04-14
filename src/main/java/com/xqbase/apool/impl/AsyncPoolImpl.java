@@ -6,6 +6,7 @@ import com.xqbase.apool.LifeCycle;
 import com.xqbase.apool.callback.Callback;
 import com.xqbase.apool.callback.SimpleCallback;
 import com.xqbase.apool.exceptions.SizeLimitExceededException;
+import com.xqbase.apool.stats.AsyncPoolStats;
 import com.xqbase.apool.stats.PoolStats;
 import com.xqbase.apool.util.Cancellable;
 import com.xqbase.apool.util.LinkedDeque;
@@ -268,7 +269,24 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     @Override
     public PoolStats getStats() {
-        return null;
+        // get a copy of stats
+        synchronized (lock) {
+            AsyncPoolStats stats = new AsyncPoolStats(
+                poolName,
+                maxSize,
+                minSize,
+                poolSize,
+                idleTimeout,
+                totalCreated,
+                totalCreateErrors,
+                totalDestroyed,
+                totalDestroyErrors,
+                totalBadDestroyed,
+                checkedOut,
+                idle.size()
+            );
+            return stats;
+        }
     }
 
     /**
@@ -471,12 +489,12 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
         @Override
         public void onError(Throwable e) {
-
+            callback.onError(e);
         }
 
         @Override
         public void onSuccess(T result) {
-
+            callback.onSuccess(result);
         }
     }
 }

@@ -14,7 +14,10 @@ public class AsyncPoolStats implements PoolStats {
     private final long idleTimeout;
 
     private final int totalCreated;
+    private final int totalCreateErrors;
     private final int totalDestroyed;
+    private final int totalDestroyErrors;
+    private final int totalBadDestroyed;
     private final int checkedOut;
     private final int idleCount;
 
@@ -24,7 +27,10 @@ public class AsyncPoolStats implements PoolStats {
                           int poolSize,
                           long idleTimeout,
                           int totalCreated,
+                          int totalCreateErrors,
                           int totalDestroyed,
+                          int totalDestroyErrors,
+                          int totalBadDestroyed,
                           int checkedOut,
                           int idleCount) {
         this.poolName = poolName;
@@ -33,7 +39,10 @@ public class AsyncPoolStats implements PoolStats {
         this.poolSize = poolSize;
         this.idleTimeout = idleTimeout;
         this.totalCreated = totalCreated;
+        this.totalCreateErrors = totalCreateErrors;
         this.totalDestroyed = totalDestroyed;
+        this.totalDestroyErrors = totalDestroyErrors;
+        this.totalBadDestroyed = totalBadDestroyed;
         this.checkedOut = checkedOut;
         this.idleCount = idleCount;
     }
@@ -46,6 +55,21 @@ public class AsyncPoolStats implements PoolStats {
     @Override
     public int getTotalDestroyed() {
         return totalDestroyed;
+    }
+
+    @Override
+    public int getTotalCreatedErrors() {
+        return totalCreateErrors;
+    }
+
+    @Override
+    public int getTotalDestroyErrors() {
+        return totalDestroyErrors;
+    }
+
+    @Override
+    public int getTotalBadDestroyed() {
+        return totalBadDestroyed;
     }
 
     @Override

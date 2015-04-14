@@ -29,6 +29,31 @@ public interface PoolStats {
     int getTotalDestroyed();
 
     /**
+     * Get the total number of lifecycle create errors between
+     * the starting of the pool and the call to getStats().
+     *
+     * @return The total number of create errors.
+     */
+    int getTotalCreatedErrors();
+
+    /**
+     * Get the total number of lifecycle destroy errors between
+     * the starting of the pool and the call to getStats().
+     *
+     * @return The total number of destroy errors.
+     */
+    int getTotalDestroyErrors();
+
+    /**
+     * Get the total number of pool objects destroyed because of
+     * dispose or failed lifecycle validation between the starting
+     * of the pool and the call to getStats().
+     *
+     * @return The total number of bad destroyed pool objects.
+     */
+    int getTotalBadDestroyed();
+
+    /**
      * Get the total number of timed out pool objects between
      * the starting of the Pool and the call to getStats().
      *
