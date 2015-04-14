@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -69,7 +70,24 @@ public class ChannelPoolManager {
      * Shutdown the all the channel pools under this manager.
      */
     public void shutdown() {
+        final Collection<AsyncPool<Channel>> pools;
+        final State innerState;
 
+        synchronized (mutex) {
+            innerState = state;
+            pools = pool.values();
+            if (innerState == State.RUNNING) {
+                state = State.SHUTTING_DOWN;
+            }
+        }
+
+        if (innerState != State.RUNNING) {
+            throw new IllegalStateException(name + " is " + innerState);
+        }
+
+        for (AsyncPool<Channel> p : pools) {
+            p.shutdown(null);
+        }
     }
 
     /**
