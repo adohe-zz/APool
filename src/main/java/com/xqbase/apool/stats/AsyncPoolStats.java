@@ -11,13 +11,13 @@ public class AsyncPoolStats implements PoolStats {
     private final int maxSize;
     private final int minSize;
     private final int poolSize;
-    private final long idleTimeout;
 
     private final int totalCreated;
     private final int totalCreateErrors;
     private final int totalDestroyed;
     private final int totalDestroyErrors;
     private final int totalBadDestroyed;
+    private final int totalTimeout;
     private final int checkedOut;
     private final int idleCount;
 
@@ -25,24 +25,24 @@ public class AsyncPoolStats implements PoolStats {
                           int maxSize,
                           int minSize,
                           int poolSize,
-                          long idleTimeout,
                           int totalCreated,
                           int totalCreateErrors,
                           int totalDestroyed,
                           int totalDestroyErrors,
                           int totalBadDestroyed,
+                          int totalTimeout,
                           int checkedOut,
                           int idleCount) {
         this.poolName = poolName;
         this.maxSize = maxSize;
         this.minSize = minSize;
         this.poolSize = poolSize;
-        this.idleTimeout = idleTimeout;
         this.totalCreated = totalCreated;
         this.totalCreateErrors = totalCreateErrors;
         this.totalDestroyed = totalDestroyed;
         this.totalDestroyErrors = totalDestroyErrors;
         this.totalBadDestroyed = totalBadDestroyed;
+        this.totalTimeout = totalTimeout;
         this.checkedOut = checkedOut;
         this.idleCount = idleCount;
     }
@@ -74,7 +74,7 @@ public class AsyncPoolStats implements PoolStats {
 
     @Override
     public int getTotalTimeout() {
-        return 0;
+        return totalTimeout;
     }
 
     @Override
@@ -100,5 +100,10 @@ public class AsyncPoolStats implements PoolStats {
     @Override
     public int getIdleCount() {
         return idleCount;
+    }
+
+    @Override
+    public String getPoolName() {
+        return poolName;
     }
 }

@@ -8,6 +8,13 @@ package com.xqbase.apool.stats;
 public interface PoolStats {
 
     /**
+     * Get the name of this pool.
+     *
+     * @return name of pool.
+     */
+    String getPoolName();
+
+    /**
      * Get the total number of pool objects created
      * between the starting of the Pool and the call
      * to getStats().

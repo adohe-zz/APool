@@ -312,12 +312,12 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
                 maxSize,
                 minSize,
                 poolSize,
-                idleTimeout,
                 totalCreated,
                 totalCreateErrors,
                 totalDestroyed,
                 totalDestroyErrors,
                 totalBadDestroyed,
+                totalTimeout,
                 checkedOut,
                 idle.size()
             );
