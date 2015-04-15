@@ -15,10 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * The Async Pool Implementation.
@@ -36,6 +33,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private final long idleTimeout;
     private final ScheduledExecutorService timeoutExecutor;
     private volatile ScheduledFuture<?> objectTimeoutFuture;
+    private final ExecutorService callbackExecutor;
     private final LifeCycle<T> lifeCycle;
     private final CreateLatch createLatch;
     private final Strategy strategy;
@@ -60,13 +58,48 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
     private int totalTimeout = 0;
     private int checkedOut = 0;
 
+    // Construct an Async Pool with {@code Integer.MAX_VALUE} maxWaiters.
     public AsyncPoolImpl(String poolName,
                 int maxSize,
-                int minSize,
-                int maxWaiters,
                 long idleTimeout,
-                ScheduledExecutorService timeoutExecutor,
                 LifeCycle<T> lifeCycle,
+                ScheduledExecutorService timeoutExecutor) {
+        this(poolName, maxSize, idleTimeout, lifeCycle, timeoutExecutor, timeoutExecutor, Integer.MAX_VALUE);
+    }
+
+    // Construct an Async Pool with 0 minSize and Strategy.LRU
+    public AsyncPoolImpl(String poolName,
+                int maxSize,
+                long idleTimeout,
+                LifeCycle<T> lifeCycle,
+                ScheduledExecutorService timeoutExecutor,
+                ExecutorService callbackExecutor,
+                int maxWaiters) {
+        this(poolName, maxSize, idleTimeout, lifeCycle, timeoutExecutor, callbackExecutor,
+                maxWaiters, 0, Strategy.LRU);
+    }
+
+    public AsyncPoolImpl(String poolName,
+                int maxSize,
+                long idleTimeout,
+                LifeCycle<T> lifeCycle,
+                ScheduledExecutorService timeoutExecutor,
+                ExecutorService callbackExecutor,
+                int maxWaiters,
+                int minSize,
+                Strategy strategy) {
+        this(poolName, maxSize, idleTimeout, lifeCycle, timeoutExecutor, callbackExecutor, maxWaiters, minSize,
+                new NoopCreateLatch(), strategy);
+    }
+
+    public AsyncPoolImpl(String poolName,
+                int maxSize,
+                long idleTimeout,
+                LifeCycle<T> lifeCycle,
+                ScheduledExecutorService timeoutExecutor,
+                ExecutorService callbackExecutor,
+                int maxWaiters,
+                int minSize,
                 CreateLatch createLatch,
                 Strategy strategy) {
         this.poolName = poolName;
@@ -75,6 +108,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
         this.maxWaiters = maxWaiters;
         this.idleTimeout = idleTimeout;
         this.timeoutExecutor = timeoutExecutor;
+        this.callbackExecutor = callbackExecutor;
         this.lifeCycle = lifeCycle;
         this.createLatch = createLatch;
         this.strategy = strategy;
