@@ -356,8 +356,41 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
             public void run(final SimpleCallback callback) {
                 lifeCycle.create(new Callback<T>() {
                     @Override
-                    public void onError(Throwable e) {
+                    public void onError(final Throwable e) {
+                        createLatch.incrementPeriod();
+                        // We drain all waiters and cancel all pending creates if a create fails.
+                        // When a create fails, rate-limiting logical will be applied. In this case
+                        // we may be initiating creations at a low rate than incoming requests. While
+                        // creations are suppressed, it is better to deny all waiters and let them
+                        // see the real cause.
+                        final Collection<Callback<T>> waitersDenied;
+                        final Collection<CreateLatch.Task> pendingTasks = createLatch.cancelPendingTasks();
+                        boolean create;
+                        synchronized (lock) {
+                            totalCreateErrors ++;
+                            create = objectDestroyed(1 + pendingTasks.size());
+                            if (!waiters.isEmpty()) {
+                                waitersDenied = waiters;
+                            } else {
+                                waitersDenied = Collections.emptyList();
+                            }
+                        }
 
+                        // We should better handle the actual callback task
+                        // in a separate thread.
+                        callbackExecutor.submit(new Runnable() {
+                            @Override
+                            public void run() {
+                                for (Callback<T> waiter : waitersDenied) {
+                                    waiter.onError(e);
+                                }
+                            }
+                        });
+
+                        if (create) {
+                            create();
+                        }
+                        callback.onDone();
                     }
 
                     @Override
