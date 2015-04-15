@@ -40,12 +40,13 @@ public class ChannelPoolFactoryImpl implements ChannelPoolFactory {
     public AsyncPool<Channel> getPool(SocketAddress address) {
         return new AsyncPoolImpl<>(address.toString() + " Connection Pool",
                 maxSize,
-                minSize,
-                maxWaitersSize,
                 idleTimeout,
-                null,
                 new ChannelPoolLifeCycle(address, null, bootstrap),
+                null,
+                null,
+                maxWaitersSize,
+                minSize,
                 new SimpleCreateLatch(0, 0, null, 0),
-                AsyncPoolImpl.Strategy.LRU);
+                strategy);
     }
 }
