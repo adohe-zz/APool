@@ -1,7 +1,10 @@
 package com.xqbase.apool.example;
 
 import com.xqbase.apool.AsyncPool;
+import com.xqbase.apool.callback.Callback;
+import com.xqbase.apool.callback.Callbacks;
 import com.xqbase.apool.stats.PoolStats;
+import com.xqbase.apool.util.None;
 import io.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +72,7 @@ public class ChannelPoolManager {
     /**
      * Shutdown the all the channel pools under this manager.
      */
-    public void shutdown() {
+    public void shutdown(final Callback<None> callback) {
         final Collection<AsyncPool<Channel>> pools;
         final State innerState;
 
@@ -85,8 +88,26 @@ public class ChannelPoolManager {
             throw new IllegalStateException(name + " is " + innerState);
         }
 
+        final Callback<None> poolCallback = Callbacks.countDown(new Callback<None>() {
+            @Override
+            public void onError(Throwable e) {
+                synchronized (mutex) {
+                    state = State.SHUT_DOWN;
+                }
+                callback.onError(e);
+            }
+
+            @Override
+            public void onSuccess(None result) {
+                synchronized (mutex) {
+                    state = State.SHUT_DOWN;
+                }
+                callback.onSuccess(None.none());
+            }
+        }, pools.size());
+
         for (AsyncPool<Channel> p : pools) {
-            p.shutdown(null);
+            p.shutdown(poolCallback);
         }
     }
 
