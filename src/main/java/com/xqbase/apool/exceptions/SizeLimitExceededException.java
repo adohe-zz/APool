@@ -7,9 +7,6 @@ package com.xqbase.apool.exceptions;
  */
 public class SizeLimitExceededException extends Exception {
 
-    public SizeLimitExceededException() {
-    }
-
     public SizeLimitExceededException(String message) {
         super(message);
     }
