@@ -4,8 +4,6 @@ import com.xqbase.apool.callback.SimpleCallback;
 import java.util.Collection;
 
 /**
- * The pool object creation latch.
-/**
  * This latch controls the pool object creation rate.
  *
  * @author Tony He
