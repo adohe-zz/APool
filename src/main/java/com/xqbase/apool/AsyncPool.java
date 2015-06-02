@@ -83,9 +83,11 @@ public interface AsyncPool<T> {
     Collection<Callback<T>> cancelWaiters();
 
     /**
-     * Get the current stats of the async pool.
+     * Get a snapshot of pool statistics. The specific statistics are described in
+     * {@link PoolStats}. Calling getStats will reset any 'latched' statistics.
      *
-     * @return stats of pool when called this method.
+     * @return An {@link PoolStats} object representing the current pool
+     * statistics.
      */
     PoolStats getStats();
 }

@@ -26,6 +26,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AsyncPoolImpl.class);
 
+    // Configured
     private final String poolName;
     private final int maxSize;
     private final int minSize;
@@ -43,6 +44,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
 
     private int poolSize = 0;
     private final Object lock = new Object();
+    private Throwable lastCreateError = null;
 
     private final Deque<TimedObject<T>> idle = new LinkedList<>();
     private final LinkedDeque<Callback<T>> waiters = new LinkedDeque<>();
@@ -334,8 +336,8 @@ public class AsyncPoolImpl<T> implements AsyncPool<T> {
         boolean result = false;
         synchronized (lock) {
             if (state == State.RUNNING) {
-                if (poolSize > maxSize) {
-
+                if (poolSize >= maxSize) {
+                    lastCreateError = null;
                 } else if (waiters.size() > 0 || poolSize < minSize) {
                     poolSize ++;
                     result = true;
